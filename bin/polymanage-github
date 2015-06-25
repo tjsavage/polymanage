@@ -1,0 +1,43 @@
+#! /usr/bin/env node
+
+'use strict'
+
+var program = require('commander');
+var myPackage = require('../package.json');
+
+var GithubManager = require('../src/githubManager');
+
+program
+  .version(myPackage.version)
+  .command('labels <repo> [otherRepos...]')
+  .option('-l, --list', 'List existing labels')
+  .action(function (repo, otherRepos) {
+    if (program.list) {
+      //githubManager.list(repo, otherRepos)
+    }
+  });
+
+program
+  .version(myPackage.version)
+  .command('issues <repo> [otherRepos...]')
+  .option('-l, --list', 'List all issues across repos')
+  .action(function (repo, otherRepos) {
+    // do stuff
+  })
+
+program
+  .usage('list <repoRegex> [otherRepos...]')
+  .command('list <repoRegex> [otherRepos...]')
+  .action(function (repoRegex, otherRepos) {
+    var repos = [];
+    repos.push(repoRegex);
+
+    if (otherRepos) {
+      repos = repos.concat(otherRepos)
+    }
+    
+    var manager = new GithubManager(repos);
+    manager.list();
+  });
+
+program.parse(process.argv);

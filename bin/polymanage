@@ -1,0 +1,11 @@
+#! /usr/bin/env node
+
+'use strict';
+
+var program = require('commander');
+var myPackage = require('../package.json');
+
+program
+  .version(myPackage.version)
+  .command('github [options]', 'run commands on github')
+  .parse(process.argv);

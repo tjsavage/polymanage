@@ -1,0 +1,17 @@
+{
+  "name": "polymanage",
+  "version": "0.0.1",
+  "description": "A command-line tool for managing polymer repositories",
+  "author": "The Polymer Authors",
+  "dependencies": {
+    "commander": "^2.8.1",
+    "es6-promise": "^2.3.0",
+    "github": "^0.2.4"
+  },
+  "bin": {
+    "polymanage": "bin/polymanage"
+  },
+  "devDependencies": {
+    "chai": "^3.0.0"
+  }
+}
