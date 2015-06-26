@@ -4,6 +4,7 @@
   "description": "A command-line tool for managing polymer repositories",
   "author": "The Polymer Authors",
   "dependencies": {
+    "cli-color": "^1.0.0",
     "commander": "^2.8.1",
     "es6-promise": "^2.3.0",
     "github": "^0.2.4"

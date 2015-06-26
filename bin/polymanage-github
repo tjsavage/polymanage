@@ -7,37 +7,52 @@ var myPackage = require('../package.json');
 
 var GithubManager = require('../src/githubManager');
 
-program
-  .version(myPackage.version)
-  .command('labels <repo> [otherRepos...]')
-  .option('-l, --list', 'List existing labels')
-  .action(function (repo, otherRepos) {
-    if (program.list) {
-      //githubManager.list(repo, otherRepos)
-    }
-  });
+function coerceToList(val) {
+  return val.split(' ');
+}
 
 program
   .version(myPackage.version)
   .command('issues <repo> [otherRepos...]')
   .option('-l, --list', 'List all issues across repos')
-  .action(function (repo, otherRepos) {
-    // do stuff
+  .action(function (repoRegex, otherRepos) {
+    console.log(repoRegex, otherRepos);
   })
 
 program
-  .usage('list <repoRegex> [otherRepos...]')
   .command('list <repoRegex> [otherRepos...]')
+  .option('-p, --properties <properties>', 'List of properties to emit', coerceToList)
+  .option('-v, --verbose', 'Verbose')
   .action(function (repoRegex, otherRepos) {
-    var repos = [];
-    repos.push(repoRegex);
-
-    if (otherRepos) {
-      repos = repos.concat(otherRepos)
-    }
-    
-    var manager = new GithubManager(repos);
-    manager.list();
+    var manager = getGithubManager(repoRegex, otherRepos);
+    manager.list(this.properties, this.verbose);
   });
+
+program
+  .command('labels <repoRegex> [otherRepos...]')
+  .option('-l, --list', 'List labels')
+  .option('-g, --group', 'Group labels by repo when listing')
+  .action(function(repoRegex, otherRepos) {
+    var manager = getGithubManager(repoRegex, otherRepos);
+
+    manager.labels(this.list, this.group);
+  });
+
+function combineRepoArgs(repoRegex, otherRepos) {
+  var repos = [];
+  repos.push(repoRegex);
+
+  if (otherRepos.length) {
+    repos = repos.concat(otherRepos)
+  }
+  return repos;
+}
+
+function getGithubManager(repoRegex, otherRepos) {
+  var repos = combineRepoArgs(repoRegex, otherRepos);
+
+  var manager = new GithubManager(repos);
+  return manager;
+}
 
 program.parse(process.argv);
