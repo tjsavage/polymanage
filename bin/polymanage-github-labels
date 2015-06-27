@@ -1,0 +1,19 @@
+#! /usr/bin/env node
+
+'use strict'
+
+var program = require('commander');
+var myPackage = require('../package.json');
+
+var GithubManager = require('../src/githubManager');
+
+program
+  .command('list <repoRegex> [otherRepos...]')
+  .option('-g, --group', 'Group labels by repo when listing')
+  .action(function(repoRegex, otherRepos) {
+    var manager = GithubManager.getGithubManager(repoRegex, otherRepos);
+
+    manager.listLabels(this.group);
+  });
+
+program.parse(process.argv);

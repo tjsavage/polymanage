@@ -44,20 +44,18 @@ GithubManager.prototype = {
     });
   },
 
-  labels: function labels(list, group) {
+  listLabels: function listLabels(group) {
     this._reposPromise.then(GithubManager._retrieveLabelsFromRepos).then(function(repos) {
-      if (list) {
-        for(var i = 0; i < repos.length; i++) {
-          if (group) console.log(repos[i].name);
+      for(var i = 0; i < repos.length; i++) {
+        if (group) console.log(repos[i].name);
 
-          for(var j = 0; j < repos[i].labels.length; j++) {
-            var labelsStr = ""
-            if (group) labelsStr += "\t";
+        for(var j = 0; j < repos[i].labels.length; j++) {
+          var labelsStr = ""
+          if (group) labelsStr += "\t";
 
-            labelsStr += repos[i].labels[j].name;
+          labelsStr += repos[i].labels[j].name;
 
-            console.log(labelsStr);
-          }
+          console.log(labelsStr);
         }
       }
     });
@@ -219,6 +217,33 @@ GithubManager._tokenizeRepoString = function(repoString) {
 GithubManager._isRegex = function(repoString) {
   var matches = repoString.match( /^[a-zA-Z0-9-]+$/ )
   return (matches === null);
+}
+
+/*
+* @param {String} repoRegex The typical first argument, a single regex for a repo
+* @param {Array<String>} otherRepos An array of additional regex strings
+* @return {Array<String>} A single list of repo regex strings
+*/
+GithubManager.combineRepoArgs = function(repoRegex, otherRepos) {
+  var repos = [];
+  repos.push(repoRegex);
+
+  if (otherRepos.length) {
+    repos = repos.concat(otherRepos)
+  }
+  return repos;
+}
+
+/*
+* @param {String} repoRegex The typical first argument, a single regex for a repo
+* @param {Array<String>} otherRepos An array of additional regex strings
+* @return {GithubManager} A GithubManager object with the repos passed in
+*/
+GithubManager.getGithubManager = function(repoRegex, otherRepos) {
+  var repos = GithubManager.combineRepoArgs(repoRegex, otherRepos);
+
+  var manager = new GithubManager(repos);
+  return manager;
 }
 
 module.exports = GithubManager;
