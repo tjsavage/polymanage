@@ -7,9 +7,6 @@
 */
 
 var GithubAPI = require('github');
-var github = new GithubAPI({
-  "version": "3.0.0"
-});
 
 var config = require('../config.json');
 var Promise = global.Promise || require('es6-promise').Promise;
@@ -21,17 +18,13 @@ var clic = require('cli-color');
 *   act on. Strings can be in the form Organization/repo or regex in the form
 *   Organization/repoRegex
 */
-var GithubManager = function GithubManager(repos) {
-  github.authenticate({
-    type: "oauth",
-    token: config.github.token
-  });
-
+var GithubManager = function GithubManager(repos, githubAPI) {
   this._repoStrings = repos;
   this._reposPromise = GithubManager._retrieveRepos(this._repoStrings);
 }
 
 GithubManager.prototype = {
+
   list: function list(properties, verbose) {
     this._reposPromise.then(function(repos) {
       for(var i = 0; i < repos.length; i++) {
@@ -62,6 +55,19 @@ GithubManager.prototype = {
   }
 }
 
+GithubManager._githubAPI = new GithubAPI({
+    "version": "3.0.0"
+})
+
+/*
+* @param {Object} opts The settings to pass into the gitub authenticate method
+*/
+GithubManager.auth = function(opts) {
+  GithubManager._githubAPI.authenticate(opts);
+}
+
+
+
 /*
 * @param {Array<Repos>} repos A list of repo objects to retrieve tags for
 * @return {Promise<Array<Repos>>} A promise that resolves to a list of repo
@@ -71,10 +77,9 @@ GithubManager._retrieveLabelsFromRepos = function(repos) {
   var labelPromises = [];
 
   for (var i = 0; i < repos.length; i++) {
-
     var labelPromise = new Promise(function(resolve, reject) {
       var repo = repos[i];
-      github.issues.getLabels({
+      GithubManager._githubAPI.issues.getLabels({
         user: repo.owner.login,
         repo: repo.name,
         //TODO: Apply this recursively to get all pages no matter what.
@@ -139,7 +144,7 @@ GithubManager._retrieveMatchingRepos = function(ownerStr, repoStr) {
       });
 
     } else {
-      var repo = github.repos.get({
+      GithubManager._githubAPI.repos.get({
         user: ownerStr,
         repo: repoStr
       }, function(err, repo) {
@@ -153,12 +158,15 @@ GithubManager._retrieveMatchingRepos = function(ownerStr, repoStr) {
 
 /*
 * @param {Array<Repository>} repos An array of repository objects to filter
-* @param {String} regexStr The regex string to filter repo names
+* @param {String} regexStr The regex string to filter repo names. Adds start and
+*   end delimiters automatically if they're not there to match the entire string.
 * @return {Array<Repository>} The array of filtered repos whose names match regexStr
 */
 GithubManager._filterReposByRegex = function(repos, regexStr) {
-  var matchedRepos = [];
+  if (regexStr[0] != '^') regexStr = '^' + regexStr;
+  if (regexStr[-1] != '$') regexStr = regexStr + '$';
 
+  var matchedRepos = [];
   for (var i = 0; i < repos.length; i++) {
     var repo = repos[i];
     if (repo.name.match(regexStr)) {
@@ -179,15 +187,18 @@ GithubManager._getAllReposFromOrg = function(opts) {
 
   return new Promise(function(resolve, reject) {
     var getNextPage = function(currPage) {
-      github.repos.getFromOrg({
+      GithubManager._githubAPI.repos.getFromOrg({
         org: opts.org,
         page: currPage + 1
       }, function(err, repos) {
+        if (err) {
+          reject(err);
+        }
+
         if (repos.length == 0) {
           resolve(allRepos);
           return;
         }
-
         allRepos = allRepos.concat(repos);
         getNextPage(currPage + 1);
       })

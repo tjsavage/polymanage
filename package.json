@@ -7,7 +7,8 @@
     "cli-color": "^1.0.0",
     "commander": "^2.8.1",
     "es6-promise": "^2.3.0",
-    "github": "^0.2.4"
+    "github": "^0.2.4",
+    "sinon": "^1.15.4"
   },
   "bin": {
     "polymanage": "bin/polymanage"

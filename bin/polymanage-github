@@ -4,6 +4,7 @@
 
 var program = require('commander');
 var myPackage = require('../package.json');
+var config = require('../config.json');
 
 var GithubManager = require('../src/githubManager');
 
@@ -20,6 +21,11 @@ program
   .option('-p, --properties <properties>', 'List of properties to emit', function(val) { return val.split(' ')})
   .option('-v, --verbose', 'Verbose')
   .action(function (repoRegex, otherRepos) {
+    GithubManager.auth({
+      type: "oauth",
+      token: config.github.token
+    });
+
     var manager = GithubManager.getGithubManager(repoRegex, otherRepos);
     manager.list(this.properties, this.verbose);
   });

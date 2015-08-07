@@ -4,6 +4,7 @@
 
 var program = require('commander');
 var myPackage = require('../package.json');
+var config = require('../config.json');
 
 var GithubManager = require('../src/githubManager');
 
@@ -11,6 +12,11 @@ program
   .command('list <repoRegex> [otherRepos...]')
   .option('-g, --group', 'Group labels by repo when listing')
   .action(function(repoRegex, otherRepos) {
+    GithubManager.auth({
+      type: "oauth",
+      token: config.github.token
+    });
+
     var manager = GithubManager.getGithubManager(repoRegex, otherRepos);
 
     manager.listLabels(this.group);
