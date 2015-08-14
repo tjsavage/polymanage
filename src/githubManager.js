@@ -200,7 +200,9 @@ GithubManager._retrieveIssuesFromRepos = function(repos) {
 }
 
 /*
- * TODO:Document
+ * @param {String} pattern A string to repeat
+ * @param {Number} count The number of times to repeat it
+ * @return {String} the pattern, repeated count times.
  */
 GithubManager._repeat = function(pattern, count) {
     if (count < 1) return '';
@@ -213,7 +215,9 @@ GithubManager._repeat = function(pattern, count) {
 }
 
 /*
- * TODO:Document
+ * @param {function} reject The Promise reject
+ * @param {function} resolve The Promise resolve
+ * @return a GithubManager callback function that prints errors.
  */
 GithubManager._promoteError = function(reject, resolve) {
   return function(err, res) {
@@ -232,7 +236,11 @@ GithubManager._promoteError = function(reject, resolve) {
 }
 
 /*
- * TODO:Document
+ * @param {function} reject The Promise reject
+ * @param {function} resolve The Promise resolve
+ * @param {Array<Object>} result an array of JSON responses
+ * @param {Object} res The response from the response
+ * @return a GithubManager callback function that prints errors.
  */
 GithubManager._followPages = function(resolve, reject, result, res) {
   var i;
