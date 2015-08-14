@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "A command-line tool for managing polymer repositories",
   "author": "The Polymer Authors",
+  "repository": "https://github.com/tjsavage/polymanage",
   "dependencies": {
     "cli-color": "^1.0.0",
     "commander": "^2.8.1",

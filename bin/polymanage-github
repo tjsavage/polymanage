@@ -7,25 +7,29 @@ var myPackage = require('../package.json');
 var config = require('../config.json');
 
 var GithubManager = require('../src/githubManager');
+GithubManager.auth({
+  type: "oauth",
+  token: config.github.token
+});
 
 program
   .version(myPackage.version)
   .command('issues <repo> [otherRepos...]')
   .option('-l, --list', 'List all issues across repos')
+  .option('-a, --assign-unassigned-to <assignee>', 'Assign all unassigned issues across repos to a user')
+  .option('-v, --verbose', 'Verbose')
   .action(function (repoRegex, otherRepos) {
-    console.log(repoRegex, otherRepos);
-  })
+    var manager = GithubManager.getGithubManager(repoRegex, otherRepos);
+    if (this.assignUnassignedTo) {
+      manager.assignAll(this.assignUnassignedTo, this.verbose);
+    }
+  });
 
 program
   .command('list <repoRegex> [otherRepos...]')
   .option('-p, --properties <properties>', 'List of properties to emit', function(val) { return val.split(' ')})
   .option('-v, --verbose', 'Verbose')
   .action(function (repoRegex, otherRepos) {
-    GithubManager.auth({
-      type: "oauth",
-      token: config.github.token
-    });
-
     var manager = GithubManager.getGithubManager(repoRegex, otherRepos);
     manager.list(this.properties, this.verbose);
   });
@@ -33,6 +37,8 @@ program
 program
   .command('labels [command]', 'act on github labels for one or more repos');
 
+program
+  .command('assign [command]', 'act on github labels for one or more repos');
 
 
 program.parse(process.argv);
