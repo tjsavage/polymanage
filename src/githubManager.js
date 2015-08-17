@@ -52,6 +52,71 @@ GithubManager.prototype = {
         }
       }
     });
+  },
+
+  assignAll: function assignAll(assignee, verbose) {
+    this._reposPromise.then(GithubManager._retrieveIssuesFromRepos).then(function(repos) {
+      var repoPromises = [];
+      var totalFailures = 0;
+      var totalSuccesses = 0;
+      for(var i = 0; i < repos.length; i++) {
+        var repoPromise = new Promise(function (resolve, reject){
+          var repo = repos[i];
+          var repoOutput = "";
+          repo.successes = 0;
+          repo.failures = 0;
+          var issues = repo.issues;
+          // String like: "=  owner/repo (i/n)  ="
+          var displayName = "=  " + repo.owner.login + "/" + repo.name + " (" + (i + 1) + "/" + repos.length + ")  =";
+          if(verbose) {
+            repoOutput += GithubManager._repeat("=", displayName.length) + "\n";
+            repoOutput += displayName + "\n";
+            repoOutput += GithubManager._repeat("=", displayName.length) + "\n";
+            repoOutput += "Found " + issues.length + " unassigned issues.\n";
+          }
+          var issuePromises = [];
+          for (var j = 0; j < issues.length; j++) {
+            var issuePromise = new Promise(function(res, rej) {
+              var issue = issues[j];
+              GithubManager._githubAPI.issues.edit({
+                user: repo.owner.login,
+                repo: repo.name,
+                number: issue.number,
+                assignee: assignee
+              }, function(err, data) {
+                if (err && err.hasOwnProperty("message") && /Validation Failed/.test(err.message)) {
+                  if (verbose) {
+                    repoOutput += "#" + issue.number + ": fail\n";
+                  }
+                  repo.failures += 1;
+                } else {
+                  if (verbose) {
+                    repoOutput += "#" + issue.number + ": assigned to " + assignee + "\n";
+                  }
+                  repo.successes += 1;
+                }
+                res(issue);
+              });
+            });
+            issuePromises.push(issue);
+          }
+          Promise.all(issuePromises).then(function(issues) {
+            if (verbose) {
+              console.log(repoOutput);
+              console.log("> " + repo.successes + " successes and " + repo.failures + " failures.");
+            }
+            totalSuccesses += repo.successes;
+            totalFailures += repo.failures;
+            resolve(repo);
+          });
+        });
+        repoPromises.push(repoPromise);
+      }
+      return Promise.all(repoPromises).then(function(repos) {
+        console.log("Done: " + totalSuccesses + " successes and " + totalFailures + " failures.");
+        return repos;
+      })
+    });
   }
 }
 
@@ -100,6 +165,102 @@ GithubManager._retrieveLabelsFromRepos = function(repos) {
     return repos;
   });
 }
+
+/*
+* @param {Array<Repos>} repos A list of repo objects to retrieve tags for
+* @return {Promise<Array<Repos>>} A promise that resolves to a list of repo
+*   objects, with the list of tags added as a top-level property
+*/
+GithubManager._retrieveIssuesFromRepos = function(repos) {
+  var issuePromises = [];
+
+  for (var i = 0; i < repos.length; i++) {
+    var issuePromise = new Promise(function(resolve, reject) {
+      var repo = repos[i];
+
+      GithubManager._githubAPI.issues.repoIssues({
+        user: repo.owner.login,
+        repo: repo.name,
+        assignee: 'none',
+        state: 'open',
+        per_page: 100
+      }, GithubManager._promoteError(reject, function(res) {
+        GithubManager._followPages(function() {}, reject, [], res);
+        repo["issues"] = res;
+        resolve(repo);
+      }));
+    });
+
+    issuePromises.push(issuePromise);
+  }
+
+  return Promise.all(issuePromises).then(function(repos) {
+    return repos;
+  });
+}
+
+/*
+ * @param {String} pattern A string to repeat
+ * @param {Number} count The number of times to repeat it
+ * @return {String} the pattern, repeated count times.
+ */
+GithubManager._repeat = function(pattern, count) {
+    if (count < 1) return '';
+    var result = '';
+    while (count > 1) {
+        if (count & 1) result += pattern;
+        count >>= 1, pattern += pattern;
+    }
+    return result + pattern;
+}
+
+/*
+ * @param {function} reject The Promise reject
+ * @param {function} resolve The Promise resolve
+ * @return a GithubManager callback function that prints errors.
+ */
+GithubManager._promoteError = function(reject, resolve) {
+  return function(err, res) {
+    if (err) {
+      if (err.hasOwnProperty("message") && /rate limit exceeded/.test(err.message)) {
+        rateLimitExceeded = true;
+      }
+
+      console.error("caught error: %s", err);
+      reject(err);
+    }
+    else {
+      resolve(res);
+    }
+  };
+}
+
+/*
+ * @param {function} reject The Promise reject
+ * @param {function} resolve The Promise resolve
+ * @param {Array<Object>} result an array of JSON responses
+ * @param {Object} res The response from the response
+ * @return a GithubManager callback function that prints errors.
+ */
+GithubManager._followPages = function(resolve, reject, result, res) {
+  var i;
+
+  for (i = 0;  i < res.length;  ++i) {
+    result.push(res[i]);
+  }
+
+  if (GithubManager._githubAPI.hasNextPage(res)) {
+    GithubManager._githubAPI.getNextPage(res, GithubManager._promoteError(reject, function(res) {
+      GithubManager._followPages(resolve, reject, result, res);
+    }));
+  }
+  else {
+    resolve(result);
+  }
+}
+
+
+
 /*
 * @param {Array<String>} repoStrings A list of strings to resolve to repos
 * @return {Promise} Returns a promise that resolves to a list of repo objects
