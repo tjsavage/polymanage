@@ -54,6 +54,38 @@ GithubManager.prototype = {
     });
   },
 
+  addLabels: function addLabels(labelSetKey) {
+    if (!labelSetKey) {
+      console.log("You must enter a key for the labelSet defined in the config.json");
+      return;
+    }
+
+    var labels = config.github.labelSets[labelSetKey];
+    console.log(labels);
+    if (!labels) {
+      console.log("You must enter a valid label set key");
+      return
+    }
+
+    this._reposPromise.then(function(repos) {
+      var repoPromises = [];
+
+      for(var i = 0; i < repos.length; i++) {
+        var repo = repos[i];
+        console.log("Adding labels to: ", repo.owner.login, "/", repo.name);
+        var repoPromise = GithubManager._addLabelsToRepo(repo.owner.login,
+          repo.name,
+          labels);
+
+        repoPromises.push(repoPromise);
+      }
+
+      Promise.all(repoPromises).then(function() {
+        console.log("Finished");
+      });
+    })
+  },
+
   assignAll: function assignAll(assignee, verbose) {
     this._reposPromise.then(GithubManager._retrieveIssuesFromRepos).then(function(repos) {
       var repoPromises = [];
@@ -380,6 +412,46 @@ GithubManager._tokenizeRepoString = function(repoString) {
   }
 
   return split;
+}
+
+/*
+* @param {String} ownerStr The repo owner
+* @param {String} repoStr The repo string
+* @param {Map<String, String>} labels The map from labelName > 6 char hex value
+*   without the leading #
+* @return {Promise} A promise that resolves when the call complete, or rejects
+*   if there's an error
+*/
+GithubManager._addLabelsToRepo = function(ownerStr, repoStr, labels) {
+  var labelPromises = [];
+  for(var key in labels) {
+    var labelPromise = GithubManager._addLabelToRepo(ownerStr, repoStr, key, labels[key]);
+    labelPromises.push(labelPromise);
+  }
+
+  return Promise.all(labelPromises);
+}
+
+/*
+* @param {String} ownerStr The repo owner
+* @param {String} repoStr The repo string
+* @param {String} labelName The name of the label to add
+* @param {String} labelColor The 6-character hex value withou the #
+*/
+GithubManager._addLabelToRepo = function(ownerStr, repoStr, labelName, labelColor) {
+  return new Promise(function(resolve, reject) {
+    GithubManager._githubAPI.issues.createLabel({
+      user: ownerStr,
+      repo: repoStr,
+      name: labelName,
+      color: labelColor
+    }, function(err) {
+      if (err) {
+        reject(err);
+      }
+      resolve();
+    });
+  });
 }
 
 /*

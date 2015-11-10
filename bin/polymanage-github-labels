@@ -22,4 +22,17 @@ program
     manager.listLabels(this.group);
   });
 
+program
+  .command('add <repoRegex> [otherRepos...]')
+  .option('-l, --labelSetKey [key]', 'A label set key defined in config.github.labelList')
+  .action(function(repoRegex, otherRepos) {
+    GithubManager.auth({
+      type: "oauth",
+      token: config.github.token
+    });
+
+    var manager = GithubManager.getGithubManager(repoRegex, otherRepos);
+
+    manager.addLabels(this.labelSetKey);
+  })
 program.parse(process.argv);

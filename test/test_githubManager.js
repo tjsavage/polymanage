@@ -211,5 +211,58 @@ describe("githubManager", function() {
     })
   });
 
+  describe("_addLabelToRepo", function() {
+    it("should correctly add a label to a single repo", function(done) {
+      GithubManager._githubAPI = {
+        issues: {
+          createLabel: function(opts, cb) {
+            expect(opts.user).to.equal("myOrg");
+            expect(opts.repo).to.equal("Repo1");
+            expect(opts.name).to.equal("LabelName");
+            expect(opts.color).to.equal("ffffff");
+
+            cb(null, null);
+          }
+        }
+      };
+
+      GithubManager._addLabelToRepo("myOrg", "Repo1", "LabelName", "ffffff").then(function(result) {
+        expect(result).to.be.undefined;
+        done();
+      }, done).catch(done);
+    });
+  });
+
+  describe("_addLabelsToRepo", function() {
+    it("should correctly add multiple labels to a single repo", function(done) {
+      GithubManager._githubAPI = {
+        issues: {
+          createLabel: function(opts, cb) {
+            expect(opts.user).to.equal("myOrg");
+            expect(opts.repo).to.equal("Repo1");
+
+            if (opts.name == "label1") {
+              expect(opts.color).to.equal("ffffff");
+              cb(null, null);
+            } else if (opts.name == "label2") {
+              expect(opts.color).to.equal("000000");
+              cb(null, null);
+            } else {
+              throw new Error("wrong label name");
+            }
+          }
+        }
+      }
+
+      GithubManager._addLabelsToRepo("myOrg", "Repo1", {
+        "label1": "ffffff",
+        "label2": "000000"
+      }).then(function(result) {
+        expect(result.length).to.equal(2);
+        done();
+      }, done).catch(done);
+    });
+
+  })
 
 })
