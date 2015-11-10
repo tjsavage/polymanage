@@ -1,5 +1,27 @@
 {
   "github": {
-    "token": ""
+    "token": "",
+    "labelSets": {
+      "elements": {
+        "a11y": "5e8782",
+        "api-feedback": "009800",
+        "bug": "fc2929",
+        "cleanup": "d4c5f9",
+        "code-yellow": "ffff00",
+        "documentation": "ffffed",
+        "duplicate": "cccccc",
+        "enhancement": "84b6eb",
+        "good-first-bug": "207de5",
+        "help wanted": "159818",
+        "invalid": "e6e6e6",
+        "needs move": "ededed",
+        "pending-response": "333333",
+        "question": "cc317c",
+        "started": "adffad",
+        "wontfix": "ffffff",
+        "cla: yes": "00ff00",
+        "cla: no": "ff0000"
+      }
+    }
   }
 }
