@@ -5,9 +5,13 @@ A management tool for teams using Polymer and building lots of elements
 
 Implemented
 * List repos based on regexes
+* Add tags to matching repos
+* Add milestones to matching repos
+* Add a consistent set of tags to a large group of repos
 
-Planned
-* List tags for repos
+## Using
+
+Woefully under-documented. Still a work-in-progress. Follow the rabbit hole of `polymanage --help`
 
 ## Developing
 
