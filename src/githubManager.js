@@ -86,6 +86,30 @@ GithubManager.prototype = {
     })
   },
 
+  addMilestone: function addMilestone(milestoneTitle, milestoneDescription) {
+    if (!milestoneTitle) {
+      console.log("You must enter a milestone name to add.");
+      return;
+    }
+
+    this._reposPromise.then(function(repos) {
+      var repoPromises = [];
+
+      for(var i = 0; i < repos.length; i++) {
+        var repo = repos[i];
+        console.log("Adding milestone to: ", repo.owner.login, "/", repo.name);
+        var repoPromise = GithubManager._addMilestoneToRepo(repo.owner.login, repo.name, milestoneTitle, milestoneDescription);
+
+        repoPromises.push(repoPromise);
+      }
+
+      Promise.all(repoPromises).then(function() {
+        console.log("Finished");
+      });
+    });
+
+  },
+
   assignAll: function assignAll(assignee, verbose) {
     this._reposPromise.then(GithubManager._retrieveIssuesFromRepos).then(function(repos) {
       var repoPromises = [];
@@ -454,6 +478,16 @@ GithubManager._addLabelToRepo = function(ownerStr, repoStr, labelName, labelColo
   });
 }
 
+GithubManager._addMilestoneToRepo = function(ownerStr, repoStr, milestoneTitle, milestoneDescription) {
+  return new Promise(function(resolve, reject) {
+    GithubManager._githubAPI.issues.createMilestone({
+      user: ownerStr,
+      repo: repoStr,
+      title: milestoneTitle,
+      description: milestoneDescription
+    })
+  })
+}
 /*
 * @param {String} str The repo name to test if it includes regex-specific chars
 * @return {Boolean} True if the string is meant as a regex otherwise false

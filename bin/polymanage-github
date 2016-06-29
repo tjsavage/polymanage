@@ -26,6 +26,21 @@ program
   });
 
 program
+  .command('addMilestone <repoRegex> [otherRepos...]')
+  .option('-t, --title [string]', 'The title of your milestone')
+  .option('-d, --description [string]', 'The description of your milestone')
+  .action(function(repoRegex, otherRepos) {
+    GithubManager.auth({
+      type: "oauth",
+      token: config.github.token
+    });
+
+    var manager = GithubManager.getGithubManager(repoRegex, otherRepos);
+
+    manager.addMilestone(this.title, this.description);
+  })
+
+program
   .command('list <repoRegex> [otherRepos...]')
   .option('-p, --properties <properties>', 'List of properties to emit', function(val) { return val.split(' ')})
   .option('-v, --verbose', 'Verbose')
