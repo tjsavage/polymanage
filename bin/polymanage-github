@@ -17,11 +17,20 @@ program
   .command('issues <repo> [otherRepos...]')
   .option('-l, --list', 'List all issues across repos')
   .option('-a, --assign-unassigned-to <assignee>', 'Assign all unassigned issues across repos to a user')
+  .option('-i, --label-all-issues <label>', 'Label all issues in the repo with a label')
   .option('-v, --verbose', 'Verbose')
   .action(function (repoRegex, otherRepos) {
     var manager = GithubManager.getGithubManager(repoRegex, otherRepos);
     if (this.assignUnassignedTo) {
       manager.assignAll(this.assignUnassignedTo, this.verbose);
+    }
+
+    if (this.labelAllIssues) {
+      manager.labelAll(this.labelAllIssues, this.verbose);
+    }
+
+    if (this.list) {
+      manager.listAllIssues(this.verbose);
     }
   });
 
@@ -39,6 +48,14 @@ program
 
     manager.addMilestone(this.title, this.description);
   })
+
+program
+  .command('addTeam <repoRegex> [otherRepos...]')
+  .option('-i, --teamId [string]', 'The ID of the team to add all the repos to')
+  .action(function(repoRegex, otherRepos) {
+    var manager = GithubManager.getGithubManager(repoRegex, otherRepos);
+    manager.addTeam(this.teamId);
+  });
 
 program
   .command('list <repoRegex> [otherRepos...]')

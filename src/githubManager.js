@@ -110,8 +110,35 @@ GithubManager.prototype = {
 
   },
 
+  addTeam: function addTeam(teamId) {
+    if (!teamId) {
+      console.log("You must enter a team ID");
+      return;
+    }
+
+    this._reposPromise.then(function(repos) {
+      var teamAssignmentPromises = [];
+
+      for(var i = 0; i < repos.length; i++) {
+        var repo = repos[i];
+        console.log("Giving team access to: ", repo.owner.login, "/", repo.name);
+        var teamAssignmentPromise = GithubManager._addRepoToTeam(repo.owner.login, repo.name, teamId);
+
+        teamAssignmentPromises.push(teamAssignmentPromise);
+      }
+
+      Promise.all(teamAssignmentPromises).then(function() {
+        console.log("Finished");
+      });
+    });
+  },
+
   assignAll: function assignAll(assignee, verbose) {
-    this._reposPromise.then(GithubManager._retrieveIssuesFromRepos).then(function(repos) {
+    this._reposPromise.then(function(repos) {
+      return GithubManager._retrieveIssuesFromRepos(repos, {
+        assignee: 'none'
+      })
+    }).then(function(repos) {
       var repoPromises = [];
       var totalFailures = 0;
       var totalSuccesses = 0;
@@ -173,6 +200,108 @@ GithubManager.prototype = {
         return repos;
       })
     });
+  },
+
+  labelAll: function labelAll(labelName, verbose) {
+    console.log('labelAll');
+    this._reposPromise.then(function(repos) {
+      return GithubManager._retrieveIssuesFromRepos(repos, {});
+    }).then(function(repos) {
+      var repoPromises = [];
+      for(var i = 0; i < repos.length; i++) {
+        var repoPromise = new Promise(function (resolve, reject){
+          var repo = repos[i];
+          var repoOutput = "";
+          repo.successes = 0;
+          repo.failures = 0;
+          var issues = repo.issues;
+          // String like: "=  owner/repo (i/n)  ="
+          var displayName = "=  " + repo.owner.login + "/" + repo.name + " (" + (i + 1) + "/" + repos.length + ")  =";
+          if(verbose) {
+            repoOutput += GithubManager._repeat("=", displayName.length) + "\n";
+            repoOutput += displayName + "\n";
+            repoOutput += GithubManager._repeat("=", displayName.length) + "\n";
+            repoOutput += "Found " + issues.length + " unassigned issues.\n";
+          }
+          var issuePromises = [];
+          console.log('num issues:', issues.length);
+          for (var j = 0; j < issues.length; j++) {
+            var issuePromise = new Promise(function(res, rej) {
+              var issue = issues[j];
+              var addedLabels = [labelName];
+              //console.log('before addLabels', addedLabels);
+              try {
+                GithubManager._githubAPI.issues.addLabels({
+                  user: repo.owner.login,
+                  repo: repo.name,
+                  number: issue.number,
+                  body: addedLabels
+                }, function(err, data) {
+                  //console.log('after addLabels', err, data);
+                  if (err && err.hasOwnProperty("message") && /Validation Failed/.test(err.message)) {
+                    if (verbose) {
+                      repoOutput += "#" + issue.number + ": fail\n";
+                    }
+                    repo.failures += 1;
+                  } else {
+                    if (verbose) {
+                      repoOutput += "#" + issue.number + ": labeled with " + labelName + "\n";
+                    }
+                    repo.successes += 1;
+                  }
+                  res(issue);
+                });
+              } catch (e) {
+                console.log(e);
+              }
+
+            });
+            issuePromises.push(issuePromise);
+          }
+          console.log('before issuePromises all');
+          Promise.all(issuePromises).then(function(issues) {
+            console.log('after issuePromises');
+            if (verbose) {
+              console.log(repoOutput);
+              console.log("> " + repo.successes + " successes and " + repo.failures + " failures.");
+            }
+            totalSuccesses += repo.successes;
+            totalFailures += repo.failures;
+            resolve(repo);
+          });
+        });
+        repoPromises.push(repoPromise);
+      }
+      return Promise.all(repoPromises).then(function(repos) {
+        console.log("Done: " + totalSuccesses + " successes and " + totalFailures + " failures.");
+        return repos;
+      })
+    }).then(null,function(err) {
+
+      console.log('error', err, err.stack);
+      throw err;
+    });
+  },
+
+  listAllIssues: function listAllIssues(verbose) {
+    console.log('listAll');
+    this._reposPromise.then(function(repos) {
+      return GithubManager._retrieveIssuesFromRepos(repos, {});
+    }).then(function(repos) {
+      for(var i = 0; i < repos.length; i++) {
+        var repo = repos[i];
+        var issues = repo.issues;
+
+        console.log('num issues:', issues.length);
+        for (var j = 0; j < issues.length; j++) {
+          console.log(issues[j].title);
+        }
+      }
+    }).then(null,function(err) {
+
+      console.log('error', err, err.stack);
+      throw err;
+    });
   }
 }
 
@@ -227,23 +356,29 @@ GithubManager._retrieveLabelsFromRepos = function(repos) {
 * @return {Promise<Array<Repos>>} A promise that resolves to a list of repo
 *   objects, with the list of tags added as a top-level property
 */
-GithubManager._retrieveIssuesFromRepos = function(repos) {
+GithubManager._retrieveIssuesFromRepos = function(repos, issueSearchSettings) {
   var issuePromises = [];
 
   for (var i = 0; i < repos.length; i++) {
     var issuePromise = new Promise(function(resolve, reject) {
       var repo = repos[i];
 
-      GithubManager._githubAPI.issues.repoIssues({
+      if (!issueSearchSettings) {
+        issueSearchSettings = {};
+      }
+      var completeIssueSearchSettings = Object.assign({
         user: repo.owner.login,
         repo: repo.name,
-        assignee: 'none',
         state: 'open',
         per_page: 100
-      }, GithubManager._promoteError(reject, function(res) {
-        GithubManager._followPages(function() {}, reject, [], res);
-        repo["issues"] = res;
-        resolve(repo);
+      }, issueSearchSettings);
+
+      GithubManager._githubAPI.issues.getForRepo(completeIssueSearchSettings,
+        GithubManager._promoteError(reject, function(res) {
+        GithubManager._followPages(function(result) {
+          repo["issues"] = result;
+          resolve(repo);
+        }, reject, [], res);
       }));
     });
 
@@ -301,16 +436,19 @@ GithubManager._promoteError = function(reject, resolve) {
 GithubManager._followPages = function(resolve, reject, result, res) {
   var i;
 
+  console.log('result.length', result.length);
   for (i = 0;  i < res.length;  ++i) {
     result.push(res[i]);
   }
 
   if (GithubManager._githubAPI.hasNextPage(res)) {
+    console.log('getting next page');
     GithubManager._githubAPI.getNextPage(res, GithubManager._promoteError(reject, function(res) {
       GithubManager._followPages(resolve, reject, result, res);
     }));
   }
   else {
+    console.log('resolving', result.length);
     resolve(result);
   }
 }
@@ -485,8 +623,30 @@ GithubManager._addMilestoneToRepo = function(ownerStr, repoStr, milestoneTitle, 
       repo: repoStr,
       title: milestoneTitle,
       description: milestoneDescription
+    }, function(err) {
+      if(err) reject(err);
+      resolve();
     })
-  })
+  });
+
+}
+
+GithubManager._addRepoToTeam = function(ownerStr, repoStr, teamId) {
+  return new Promise(function(resolve, reject){
+    GithubManager._githubAPI.orgs.addTeamRepo({
+      id: teamId,
+      user: ownerStr,
+      repo: repoStr,
+      permission: "write"
+    }, function(err) {
+      if(err) {
+        console.log('error', err);
+        reject(err);
+      }
+      resolve();
+    });
+  });
+
 }
 /*
 * @param {String} str The repo name to test if it includes regex-specific chars
